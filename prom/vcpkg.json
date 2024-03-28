@@ -1,0 +1,7 @@
+{
+  "name": "prometheus-client-c",
+  "version-string": "0.0.0",
+  "dependencies": [
+    "pthreads"
+  ]
+}

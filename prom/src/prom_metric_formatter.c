@@ -30,7 +30,7 @@
 #include "prom_metric_t.h"
 #include "prom_string_builder_i.h"
 
-prom_metric_formatter_t *prom_metric_formatter_new() {
+prom_metric_formatter_t *prom_metric_formatter_new(void) {
   prom_metric_formatter_t *self = (prom_metric_formatter_t *)prom_malloc(sizeof(prom_metric_formatter_t));
   self->string_builder = prom_string_builder_new();
   if (self->string_builder == NULL) {

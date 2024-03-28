@@ -17,6 +17,8 @@
 #ifndef PROM_METRIC_SAMPLE_T_H
 #define PROM_METRIC_SAMPLE_T_H
 
+#include <stdatomic.h>
+
 #include "prom_metric_sample.h"
 #include "prom_metric_t.h"
 

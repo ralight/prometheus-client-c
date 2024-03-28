@@ -15,7 +15,10 @@
  */
 
 #include <stdio.h>
-#include <unistd.h>
+
+#ifndef WIN32
+#  include <unistd.h>
+#endif
 
 // Public
 #include "prom_alloc.h"
@@ -30,10 +33,12 @@
 #include "prom_metric_i.h"
 #include "prom_process_fds_i.h"
 #include "prom_process_fds_t.h"
+#ifndef WIN32
 #include "prom_process_limits_i.h"
 #include "prom_process_limits_t.h"
 #include "prom_process_stat_i.h"
 #include "prom_process_stat_t.h"
+#endif
 #include "prom_string_builder_i.h"
 
 prom_map_t *prom_collector_default_collect(prom_collector_t *self) { return self->metrics; }
@@ -132,6 +137,7 @@ prom_collector_t *prom_collector_process_new(const char *limits_path, const char
   self->proc_stat_file_path = stat_path;
   self->collect_fn = &prom_collector_process_collect;
 
+#ifndef WIN32
   r = prom_process_limits_init();
   if (r) return NULL;
 
@@ -161,6 +167,7 @@ prom_collector_t *prom_collector_process_new(const char *limits_path, const char
 
   r = prom_collector_add_metric(self, prom_process_open_fds);
   if (r) return NULL;
+  #endif
 
   return self;
 }
@@ -171,13 +178,14 @@ prom_map_t *prom_collector_process_collect(prom_collector_t *self) {
 
   int r = 0;
 
+  #ifndef WIN32
   // Allocate and create a *prom_process_limits_file_t
   prom_process_limits_file_t *limits_f = prom_process_limits_file_new(self->proc_limits_file_path);
   if (limits_f == NULL) {
     prom_process_limits_file_destroy(limits_f);
     return NULL;
   }
-
+  
   // Allocate and create a *prom_map_t from prom_process_limits_file_t. This is the main storage container for the
   // limits metric data
   prom_map_t *limits_map = prom_process_limits(limits_f);
@@ -230,6 +238,7 @@ prom_map_t *prom_collector_process_collect(prom_collector_t *self) {
     prom_process_stat_destroy(stat);
     return NULL;
   }
+
   r = prom_gauge_set(prom_process_virtual_memory_bytes, stat->vsize, NULL);
   if (r) {
     prom_process_limits_file_destroy(limits_f);
@@ -238,6 +247,7 @@ prom_map_t *prom_collector_process_collect(prom_collector_t *self) {
     prom_process_stat_destroy(stat);
     return NULL;
   }
+
   r = prom_gauge_set(prom_process_resident_memory_bytes, stat->rss*sysconf(_SC_PAGE_SIZE), NULL);
   if (r) {
     prom_process_limits_file_destroy(limits_f);
@@ -272,6 +282,7 @@ prom_map_t *prom_collector_process_collect(prom_collector_t *self) {
   if (r) return NULL;
   r = prom_process_stat_destroy(stat);
   if (r) return NULL;
+#endif
 
   return self->metrics;
 }

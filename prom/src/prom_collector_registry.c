@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
-#include <pthread.h>
+#ifndef WIN32
 #include <regex.h>
+#endif
+
+
+#include <pthread.h>
 #include <stdio.h>
 
 // Public
@@ -191,6 +195,7 @@ int prom_collector_registry_register_collector(prom_collector_registry_t *self, 
 }
 
 int prom_collector_registry_validate_metric_name(prom_collector_registry_t *self, const char *metric_name) {
+#ifndef WIN32
   regex_t r;
   int ret = 0;
   ret = regcomp(&r, "^[a-zA-Z_:][a-zA-Z0-9_:]*$", REG_EXTENDED);
@@ -207,6 +212,7 @@ int prom_collector_registry_validate_metric_name(prom_collector_registry_t *self
     return ret;
   }
   regfree(&r);
+#endif
   return 0;
 }
 

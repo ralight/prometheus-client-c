@@ -1,0 +1,59 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    tags:
+    - '*'
+  pull_request:
+    branches:
+      - master
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  prom:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+
+      - name: vcpkg build
+        uses: johnwason/vcpkg-action@v6
+        id: vcpkg
+        with:
+          manifest-dir: ${{ github.workspace }}/prom
+          triplet: x64-windows-release
+          token: ${{ github.token }}
+          github-binarycache: true
+
+      - name: Configure CMake
+        run: cmake -S ${{github.workspace}}/prom -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_GENERATOR_PLATFORM=x64 -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-release -DVCPKG_MANIFEST_MODE=ON
+
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+      - name: Organise
+        shell: bash
+        run: |
+          cp build/Release/prom.lib .
+          cp -r prom/include .
+
+      - name: Zip
+        uses: vimtor/action-zip@v1.2
+        with:
+          files: prom.lib include
+          recursive: false
+          dest: "release.zip"
+
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "release.zip"
+          allowUpdates: true

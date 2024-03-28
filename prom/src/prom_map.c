@@ -31,7 +31,7 @@
 
 #define PROM_MAP_INITIAL_SIZE 32
 
-static void destroy_map_node_value_no_op(void *value) {}
+static void destroy_map_node_value_no_op(void *value){(void)value;}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // prom_map_node
@@ -73,7 +73,7 @@ prom_linked_list_compare_t prom_map_node_compare(void *item_a, void *item_b) {
 // prom_map
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-prom_map_t *prom_map_new() {
+prom_map_t *prom_map_new(void) {
   int r = 0;
 
   prom_map_t *self = (prom_map_t *)prom_malloc(sizeof(prom_map_t));

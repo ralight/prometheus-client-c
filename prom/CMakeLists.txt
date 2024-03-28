@@ -2,25 +2,34 @@ cmake_minimum_required(VERSION 3.14.5)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-execute_process(
-    COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/../VERSION
-    OUTPUT_VARIABLE Version
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+if(WIN32)
+	add_compile_options($<$<COMPILE_LANGUAGE:C>:/experimental:c11atomics>)
+	include_directories(${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+endif()
 
-execute_process(
-    COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/../VERSION
-    COMMAND sed --regexp-extended "s/([0-9]+)\.([0-9])+\.([0-9]+)/\\1/g"
-    OUTPUT_VARIABLE MajorVersion
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+if(WIN32)
+	set(Version 0.1.3)
+else()
+	execute_process(
+	    COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/../VERSION
+	    OUTPUT_VARIABLE Version
+	    OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
 
-execute_process(
-    COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/../VERSION
-    COMMAND sed --regexp-extended "s/([0-9]+)\.([0-9])+\.([0-9]+)/\\2/"
-    OUTPUT_VARIABLE MinorVersion
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+	execute_process(
+	    COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/../VERSION
+	    COMMAND sed --regexp-extended "s/([0-9]+)\.([0-9])+\.([0-9]+)/\\1/g"
+	    OUTPUT_VARIABLE MajorVersion
+	    OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+
+	execute_process(
+	    COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/../VERSION
+	    COMMAND sed --regexp-extended "s/([0-9]+)\.([0-9])+\.([0-9]+)/\\2/"
+	    OUTPUT_VARIABLE MinorVersion
+	    OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+endif()
 
 execute_process(
     COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/../VERSION
@@ -84,29 +93,45 @@ set(
     ${private_dir}/prom_metric_sample_i.h
     ${private_dir}/prom_metric_sample_t.h
     ${private_dir}/prom_metric_t.h
-    ${private_dir}/prom_process_fds.c
-    ${private_dir}/prom_process_fds_i.h
-    ${private_dir}/prom_process_fds_t.h
-    ${private_dir}/prom_process_limits.c
-    ${private_dir}/prom_process_limits_i.h
-    ${private_dir}/prom_process_limits_t.h
-    ${private_dir}/prom_process_stat.c
-    ${private_dir}/prom_process_stat_i.h
-    ${private_dir}/prom_process_stat_t.h
-    ${private_dir}/prom_procfs_i.h
-    ${private_dir}/prom_procfs_t.h
-    ${private_dir}/prom_procfs.c
     ${private_dir}/prom_string_builder.c
     ${private_dir}/prom_string_builder_i.h
     ${private_dir}/prom_string_builder_t.h
 )
 
-include(FindThreads)
+if(NOT WIN32)
+    set(private_files "${private_files}"
+        ${private_dir}/prom_process_fds.c
+        ${private_dir}/prom_process_fds_i.h
+        ${private_dir}/prom_process_fds_t.h
+        ${private_dir}/prom_process_limits.c
+        ${private_dir}/prom_process_limits_i.h
+        ${private_dir}/prom_process_limits_t.h
+        ${private_dir}/prom_process_stat.c
+        ${private_dir}/prom_process_stat_i.h
+        ${private_dir}/prom_process_stat_t.h
+        ${private_dir}/prom_procfs_i.h
+        ${private_dir}/prom_procfs_t.h
+        ${private_dir}/prom_procfs.c
+    )
+endif()
+	
+if(WIN32)
+	find_package(PThreads4W REQUIRED)
+else()
+	include(FindThreads)
+endif()
 
-add_library(prom SHARED)
+if(WIN32)
+	add_library(prom STATIC)
+else()
+	add_library(prom SHARED)
+endif()
 
-target_compile_options(prom PRIVATE "-Werror" "-Wuninitialized" "-Wall" "-Wno-unused-label" "-std=gnu11")
-target_compile_options(prom PUBLIC "-Werror" "-Wuninitialized" "-Wall" "-Wno-unused-label" "-std=gnu11")
+if(WIN32)
+else()
+	target_compile_options(prom PRIVATE "-Werror" "-Wuninitialized" "-Wall" "-Wno-unused-label" "-std=gnu11")
+	target_compile_options(prom PUBLIC "-Werror" "-Wuninitialized" "-Wall" "-Wno-unused-label" "-std=gnu11")
+endif()
 
 target_include_directories(
     prom
@@ -120,23 +145,29 @@ target_sources(
     PRIVATE ${private_files}
 )
 
-target_link_libraries(prom PUBLIC Threads::Threads)
+if(WIN32)
+	target_link_libraries(prom PUBLIC PThreads4W::PThreads4W)
+else()
+	target_link_libraries(prom PUBLIC Threads::Threads)
+endif()
 
 if ($ENV{TEST})
     include(test/CMakeLists.txt)
 endif()
 
-set(CPACK_PACKAGE_NAME libprom-dev)
-set(CPACK_GENERATOR TGZ;DEB)
-set(CPACK_PACKAGE_VENDOR DigitalOcean)
-set(CPACK_PACKAGE_VERSION_MAJOR ${MajorVersion})
-set(CPACK_PACKAGE_VERSION_MINOR ${MinorVersion})
-set(CPACK_PACKAGE_VERSION_PATCH ${PatchVersion})
-set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../README.md)
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A prometheus client library")
-set(CPACK_PACKAGE_HOMEPAGE_URL https://github.internal.digitalocean.com/timeseries/prometheus-client-c)
+if(NOT WIN32)
+	set(CPACK_PACKAGE_NAME libprom-dev)
+	set(CPACK_GENERATOR TGZ;DEB)
+	set(CPACK_PACKAGE_VENDOR DigitalOcean)
+	set(CPACK_PACKAGE_VERSION_MAJOR ${MajorVersion})
+	set(CPACK_PACKAGE_VERSION_MINOR ${MinorVersion})
+	set(CPACK_PACKAGE_VERSION_PATCH ${PatchVersion})
+	set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../README.md)
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A prometheus client library")
+	set(CPACK_PACKAGE_HOMEPAGE_URL https://github.internal.digitalocean.com/timeseries/prometheus-client-c)
 
-include(CPack)
-include(GNUInstallDirs)
-install(TARGETS prom ARCHIVE)
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+	include(CPack)
+	include(GNUInstallDirs)
+	install(TARGETS prom ARCHIVE)
+	install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+endif()
